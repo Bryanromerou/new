@@ -1,164 +1,146 @@
-Item{
-    y: backgroundRectangle.height/2 -mainImage.height/2
-    x:  (Window.width) * .025
-    onXChanged: {
+import QtQuick 2.4
+import QtQuick.Controls 1.3
 
-    }
-    Image{
-//            visible: false    //-- Image should initially false
-        id: mainImage
-        source: root.source
-        fillMode: Image.PreserveAspectFit
-        sourceSize.width: (Window.width) * .95
-        MouseArea{
-            anchors.fill:parent
+ApplicationWindow {
+    title: qsTr("Test Crop")
+    width: 640
+    height: 480
+    visible: true
+    property var selection: undefined
+
+    Image {
+        id: image1
+        anchors.fill: parent
+        source: "img/img/flowers.jpeg"
+
+        MouseArea {
+            anchors.fill: parent
             onClicked: {
-                // Loops through each of the text on the page an it deselects all of them
-                textInputs.forEach( elm => {
-                                       if(elm.objectName !== undefined){
-                                           elm.deselectText()
-                                       }
-                                     }
-                                   )
+                if(!selection)
+                    selection = selectionComponent.createObject(parent, {"x": parent.width / 4, "y": parent.height / 4, "width": parent.width / 2, "height": parent.width / 2})
             }
         }
+    }
 
+    Component {
+        id: selectionComponent
 
-        // This is the canvas component that allows the user to draw on the picture
-        Canvas{
-            id:canvas
-            anchors.fill: parent // Creates the canvas to the size of the parent(being the image)
-
-            property var globalCtx: null
-            // These variables are set to recognize any change
-            property int lastX: 0
-            property int lastY: 0
-
-            property var undoStack : []
-            property var redoStack : []
-            property var undoStyleStack: []
-            property var redoStyleStack: []
-
-            property var events: []
-            property var currentStyle: {"color":root.drawColor,"penWidth":root.penWidth}
-
-            //Clear function that clears the canvas completely
-            function clear (){
-                var ctx = getContext('2d')
-                canvas.undoStack = []
-                canvas.redoStack = []
-                canvas.undoStyleStack = []
-                canvas.redoStyleStack = []
-                ctx.reset()
-                canvas.requestPaint()
-                root.checkIfUndoRedo()
+        Rectangle {
+            id: selComp
+            border {
+                width: 2
+                color: "steelblue"
             }
+            color: "#354682B4"
 
-            function undo (){
-                var ctx = getContext('2d')
+            property int rulersSize: 18
 
-                // If the undo stack has something then pop it into temp and redoStack
-                if(undoStack.length >0){
-                    canvas.redoStack.push(canvas.undoStack.pop())
-                    canvas.redoStyleStack.push(canvas.undoStyleStack.pop())
+            MouseArea {     // drag mouse area
+                anchors.fill: parent
+                drag{
+                    target: parent
+                    minimumX: 0
+                    minimumY: 0
+                    maximumX: parent.parent.width - parent.width
+                    maximumY: parent.parent.height - parent.height
+                    smoothed: true
                 }
 
-                ctx.reset()
-                canvas.requestPaint()
-                canvas.drawUndo(ctx)
-
-                ctx.stroke()
-                canvas.requestPaint()
-            }
-
-            function redo (){
-                var ctx = getContext('2d')
-
-                // If the undo stack has something then pop it into temp and undoStack
-                if(redoStack.length >0){
-                    canvas.undoStyleStack.push(canvas.redoStyleStack.pop())
-                    canvas.undoStack.push(canvas.redoStack.pop())
+                onDoubleClicked: {
+                    parent.destroy()        // destroy component
                 }
-
-                ctx.reset()
-                canvas.requestPaint()
-                canvas.drawUndo(ctx)
-                canvas.requestPaint()
             }
 
-            function drawUndo (ctx,beginFlag = false){
-                canvas.undoStack.forEach((line,j)=>{
-                    ctx.lineWidth = canvas.undoStyleStack[j].penWidth
-                    ctx.strokeStyle = canvas.undoStyleStack[j].color
-                    line.forEach((point,i)=>{
-                        if(i===0){console.log(`First point -- ${point.x} , ${point.y}`)}
-                        if(i === line.length-1){console.log(`Last Point -- ${point.x} , ${point.y}`)}
-                        ctx.moveTo(point.x,point.y)
-                        if(!beginFlag){
-                            beginFlag = true
-                            ctx.beginPath()
+            Rectangle {
+                width: rulersSize
+                height: rulersSize
+                radius: rulersSize
+                color: "steelblue"
+                anchors.horizontalCenter: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+
+                MouseArea {
+                    anchors.fill: parent
+                    drag{ target: parent; axis: Drag.XAxis }
+                    onMouseXChanged: {
+                        if(drag.active){
+                            selComp.width = selComp.width - mouseX
+                            selComp.x = selComp.x + mouseX
+                            if(selComp.width < 30)
+                                selComp.width = 30
                         }
-                        if(i+1<line.length){
-                            ctx.lineTo(line[i+1].x,line[i+1].y)
+                    }
+                }
+            }
+
+            Rectangle {
+                width: rulersSize
+                height: rulersSize
+                radius: rulersSize
+                color: "steelblue"
+                anchors.horizontalCenter: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+
+                MouseArea {
+                    anchors.fill: parent
+                    drag{ target: parent; axis: Drag.XAxis }
+                    onMouseXChanged: {
+                        if(drag.active){
+                            selComp.width = selComp.width + mouseX
+                            if(selComp.width < 50)
+                                selComp.width = 50
                         }
-                    })
-                    ctx.stroke()
-                    ctx.closePath()
-                })
-                root.checkIfUndoRedo()
-            }
-
-            function hangingPixelFix(incomingLine){
-//                    var lastUndoLine = canvas.undoStack.pop()
-//                    if(!lastUndoLine) return incomingLine
-//                    const incomingX = incomingLine[0].x
-//                    const lastLineX = lastUndoLine[lastUndoLine.length-1].x
-//                    if(incomingX === lastLineX ){
-//                        lastUndoLine.push(incomingLine.pop())
-//                    }
-//                    canvas.undoStack.push(lastUndoLine)
-                return incomingLine
-            }
-
-            MouseArea{
-                id:area
-                visible: drawMode
-                anchors.fill:parent
-                onPressed:{
-                    canvas.lastX = mouseX
-                    canvas.lastY = mouseY
-                }
-                onPositionChanged: {
-                    canvas.requestPaint()
-                }
-                onReleased: {
-                    canvas.currentStyle = {"color":root.drawColor,"penWidth":root.penWidth}
-                    canvas.undoStyleStack.push(canvas.currentStyle)
-                    canvas.undoStack.push(canvas.hangingPixelFix(canvas.events))
-                    canvas.events = []
-                    canvas.redoStack = []
-                    root.checkIfUndoRedo()
-                    console.log("Closing the path")
+                    }
                 }
             }
 
-            onPaint: {
-                var ctx = getContext('2d')
+            Rectangle {
+                width: rulersSize
+                height: rulersSize
+                radius: rulersSize
+                x: parent.x / 2
+                y: 0
+                color: "steelblue"
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.top
 
-                ctx.lineWidth = root.penWidth
-                ctx.strokeStyle = drawColor;
-
-                ctx.beginPath()
-                ctx.moveTo(lastX,lastY)
-                lastX = area.mouseX
-                lastY = area.mouseY
-                events.push(Qt.point(lastX,lastY))
-                ctx.lineTo(lastX,lastY)
-                ctx.stroke()
-
+                MouseArea {
+                    anchors.fill: parent
+                    drag{ target: parent; axis: Drag.YAxis }
+                    onMouseYChanged: {
+                        if(drag.active){
+                            selComp.height = selComp.height - mouseY
+                            selComp.y = selComp.y + mouseY
+                            if(selComp.height < 50)
+                                selComp.height = 50
+                        }
+                    }
+                }
             }
 
 
+            Rectangle {
+                width: rulersSize
+                height: rulersSize
+                radius: rulersSize
+                x: parent.x / 2
+                y: parent.y
+                color: "steelblue"
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.bottom
+
+                MouseArea {
+                    anchors.fill: parent
+                    drag{ target: parent; axis: Drag.YAxis }
+                    onMouseYChanged: {
+                        if(drag.active){
+                            selComp.height = selComp.height + mouseY
+                            if(selComp.height < 50)
+                                selComp.height = 50
+                        }
+                    }
+                }
+            }
         }
     }
 }
