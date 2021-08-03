@@ -5,8 +5,10 @@
         <file>SizePicker.qml</file>
         <file>Size.qml</file>
         <file>CropHandle.qml</file>
-        <file>Button.qml</file>
+        <file>Button1.qml</file>
         <file>InputText.qml</file>
         <file>temp.qml</file>
+        <file>WorkingRect.qml</file>
+        <file>temp2.qml</file>
     </qresource>
 </RCC>
