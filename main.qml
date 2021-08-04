@@ -1,7 +1,7 @@
 import QtQuick 2.4
-import QtQuick.Controls 1.3
+import QtQuick.Window 2.12
 
-ApplicationWindow {
+Window {
     id:root
     title: qsTr("Test Crop")
     width: 375
@@ -18,45 +18,94 @@ ApplicationWindow {
 
     // Calling this function shall rotate "mainImage" based on the root's rotationsAmount which is being change on click of rotateButton
     function rotateImage(direction) {
-        if (direction === "right") {
-            image1.transform = rot
-        }
+        selection.rotationAmount = rotationAmount
     }
 
     function resizeImage (){
-        console.log("resizing the image")
-        clippingMask.x = (root.width) * .025
-//        image1.paintedWidth = root.width
-//        image1.fillMode = Image.PreserveAspectCrop
-//        clippingMask.scale = root.height/clippingMask.height
+        scaleAnimX.to = root.width/clippingMask.width * .95
+        scaleAnimY.to = root.width/clippingMask.width * .95
+        const temp  = root.height/2 - image1.height
+        animY.to = temp - (temp+clippingMask.height-image1.y-image1.height)/2
+        scaleAnimX.start()
+        scaleAnimY.start()
+        animX.start()
+        animY.start()
     }
-    Rotation{id : rot; origin.x : image1.width/2 ;origin.y : image1.height/2 ; angle : rotationAmount}
 
     Item{
+        property int animationDuration: 300
+        rotation: rotationAmount
         id:clippingMask
         x: (parent.width) * .025
         y: parent.height/2 - image1.height
-        Image {
-            id: image1
-            fillMode: Image.PreserveAspectFit
-//            autoTransform:true
-            sourceSize.width: (root.width) * .95
-
-            source: "/img/img/flowers.jpeg"
+        Flickable{
+            interactive: false
+            anchors.fill:parent
+            contentHeight: 100
+            contentWidth:100
+            onFlickStarted: {
+                console.log("started flick")
+            }
+            onFlickingChanged: {
+                console.log("flicking")
+            }
+            Image {
+                id: image1
+        //            opacity: .2
+                fillMode: Image.PreserveAspectFit
+                sourceSize.width: (root.width) * .95
+                source: "/img/color_squares.jpeg"
+//                rotation: rotationAmount
+            }
         }
+        transform: [
+            Scale{
+                id: clippingScale
+            }
+        ]
 
+        // Animations Group
+        PropertyAnimation{
+            id:scaleAnimX
+            target: clippingScale
+            properties: "xScale"
+            duration: clippingMask.animationDuration
+        }
+        PropertyAnimation{
+            id:scaleAnimY
+            target: clippingScale
+            properties: "yScale"
+            duration: clippingMask.animationDuration
+        }
+        PropertyAnimation{
+            id:animX
+            target: clippingMask
+            properties: "x"
+            to: (root.width) * .025
+            duration: clippingMask.animationDuration
+        }
+        PropertyAnimation{
+            id:animY
+            target: clippingMask
+            properties: "y"
+            duration: clippingMask.animationDuration
+        }
     }
 
+    // Crop Button
     Button1{
         id: cropButton
         text: cropMode ? "Done": "Crop Image"
+        x:root.width/2- width/2
+        y:root.height - height - 100
+
         onClicked: {
             root.cropMode = !root.cropMode
             if(!selection){
                 if(selectedBefore)
-                    selection = selectionComponent.createObject(image1, {"x": memX - 10, "y": memY - image1.height+50, "width": memWidth, "height": memHeight})
+                    selection = selectionComponent.createObject(image1, {"x": memX - 9.5, "y": memY - image1.height+345, "width": memWidth, "height": memHeight})
                 else
-                    selection = selectionComponent.createObject(image1, {"x": image1.width / 4, "y": image1.height / 4, "width": image1.width / 4, "height": image1.width / 4})
+                    selection = selectionComponent.createObject(image1, {"x": 0, "y": 0 , "width": image1.width, "height": image1.height})
             }
             else{
                 clippingMask.clip = true
@@ -70,19 +119,20 @@ ApplicationWindow {
             }
             if(root.cropMode){
                 clippingMask.clip = false
+                clippingScale.xScale = 1
+                clippingScale.yScale = 1
             }else{
+                console.log("resizing image")
                 resizeImage()
             }
         }
-        x:root.width/2- width/2
-        y:root.height - height - 100
     }
 
+    // Rotate Button
     Button1{
         id: rotateButton
         visible: cropMode
         iconUrl: "/img/img/rotate.png"
-        // visible: false -- Should only be visible if image is on screen
         x:20
         width: 40
         height: width
@@ -92,20 +142,26 @@ ApplicationWindow {
         }
     }
 
+    //Reset Button
     Button1{
         id: resetButton
         visible: cropMode
-        // visible: false -- Should only be visible if image is on screen
         text: "RESET"
         textColor:"red"
         onClicked: {
             console.log("Reseting Image to original state")
             rotationAmount = 0
             root.rotateImage("right")
+            image1.mirror = false
+            selection.x = 0
+            selection.y = 0
+            selection.width = image1.width
+            selection.height = image1.height
         }
         x: root.width/2 - width/2
     }
 
+    //Horizontal Button
     Button1{
         id:flip
         visible: cropMode
@@ -116,6 +172,7 @@ ApplicationWindow {
         }
     }
 
+    //Cancel Crop Button
     Button1{
         id:cancelButton
         visible: cropMode
@@ -137,6 +194,7 @@ ApplicationWindow {
             id: selComp
             property bool rulers: false
             Component.onCompleted:displayRulers()
+            property int rotationAmount: 0
             Timer {id: timer}
             function delay(delayTime, cb) {
                 timer.interval = delayTime;
@@ -152,24 +210,21 @@ ApplicationWindow {
                 })
             }
 
-            function resizeWindow (){
-                console.log("resizing the window on release")
-            }
-
             border {
-                width: 5
-                color: "steelblue"
+                width: 10
+                color: "gray"
             }
-            color: "#354682B4"
+            color: "#35FFFFFF"
 
             property int rulersSize: 18
 
+            // Start of guide lines
             Rectangle{
                 visible: rulers
                 y:parent.height/3
                 width: parent.width
                 height: 1
-                color: "steelblue"
+                color: parent.border.color
             }
 
             Rectangle{
@@ -177,7 +232,7 @@ ApplicationWindow {
                 y:parent.height*2/3
                 width: parent.width
                 height: 1
-                color: "steelblue"
+                color: parent.border.color
             }
 
             Rectangle{
@@ -185,7 +240,7 @@ ApplicationWindow {
                 x:parent.width/3
                 height: parent.height
                 width: 1
-                color: "steelblue"
+                color: parent.border.color
             }
 
             Rectangle{
@@ -193,10 +248,11 @@ ApplicationWindow {
                 x:parent.width*2/3
                 height: parent.height
                 width: 1
-                color: "steelblue"
+                color: parent.border.color
             }
+            // End of guide lines
 
-
+            // MouseArea of selComp that allows the rectangle dragged all over the image
             MouseArea {     // drag mouse area
                 anchors.fill: parent
                 drag{
@@ -208,157 +264,283 @@ ApplicationWindow {
                     smoothed: true
                 }
                 onReleased: {
+//                    resizeImage()
                     displayRulers()
                 }
             }
 
-
-            onXChanged: {
-                console.log("moving square in the x direction -> " + x)
-                clippingMask.x = (parent.width) * .025 + x
-                image1.x = -x
-                displayRulers()
+            function moveX(inverse = false){
+                if(inverse){
+                    clippingMask.x = (parent.width) * .025 - x
+                    image1.x = x
+                    displayRulers()
+                }else{
+                    clippingMask.x = (parent.width) * .025 + x
+                    image1.x = -x
+                    displayRulers()
+                }
             }
-            onYChanged: {
-                console.log("moving square in the y direction -> "+ y)
+            function moveY(){
                 clippingMask.y = root.height/2 - image1.height + y
                 image1.y = -y
                 displayRulers()
             }
-            onWidthChanged: {
-                console.log("width changing -> "+width)
+            function changeWidth(){
                 clippingMask.width = width
                 displayRulers()
             }
-            onHeightChanged: {
-                console.log("height changing -> "+height)
+            function changeHeight(){
                 clippingMask.height = height
                 displayRulers()
             }
 
+            onXChanged: moveX()
+            onYChanged: moveY()
+            onWidthChanged: changeWidth()
+            onHeightChanged: changeHeight()
+
+            // Left
             Rectangle {
                 width: rulersSize
                 height: rulersSize
                 radius: rulersSize
-                color: "steelblue"
+//                color: "steelblue"
                 anchors.horizontalCenter: parent.left
-                anchors.verticalCenter: parent.verticalCenter
+                anchors.verticalCenter: parent.top
 
+                // Left Bar Rectangle
                 Rectangle{
-                    id:rightBar
-                    x:rulersSize/2
-                    y: -selComp.height/2 + rulersSize/2
+                    z:-2
+                    id:leftBar
+                    x: width
+                    y: rulersSize/2
                     height: selComp.height
                     width: selComp.border.width
                     color:selComp.border.color
                 }
 
+                //MouseArea for Top Left handle
+                MouseArea{
+                    anchors.fill:parent
+                    drag{ target: parent; axis: Drag.XAndYAxis}
+                    onMouseXChanged: {
+                        if(drag.active){
+                            if(selComp.x >= 0 || mouseX>0){
+                                selComp.width = selComp.width - mouseX
+                                selComp.x = selComp.x + mouseX
+                                if(selComp.width < 30)
+                                    selComp.width = 30
+                            }
+                        }
+                    }
+                    onMouseYChanged: {
+                        if(drag.active){
+                            if(selComp.y >= 0 || mouseY>0){
+                                selComp.height = selComp.height - mouseY
+                                selComp.y = selComp.y + mouseY
+                                if(selComp.height < 50)
+                                    selComp.height = 50
+                            }
+                        }
+                    }
+                }
+
+                //MouseArea for the Left Bar
                 MouseArea {
-                    anchors.fill: rightBar
+                    anchors.fill: leftBar
                     drag{ target: parent; axis: Drag.XAxis }
                     onMouseXChanged: {
                         if(drag.active){
-                            console.log(selComp.x+selComp.width)
-                            selComp.width = selComp.width - mouseX
-                            selComp.x = selComp.x + mouseX
-                            if(selComp.width < 30)
-                                selComp.width = 30
-//                            else if(selComp.width+selComp.x >root.width*95)
-//                                selComp.width = root.width*95
+                            if(selComp.x >= 0 || mouseX>0){
+                                selComp.width = selComp.width - mouseX
+                                selComp.x = selComp.x + mouseX
+                                if(selComp.width < 30)
+                                    selComp.width = 30
+                            }
                         }
                     }
                 }
             }
 
+            // Right
             Rectangle {
                 width: rulersSize
                 height: rulersSize
                 radius: rulersSize
-                color: "steelblue"
+//                color: "steelblue"
                 anchors.horizontalCenter: parent.right
-                anchors.verticalCenter: parent.verticalCenter
+                anchors.verticalCenter: parent.bottom
 
+                // Right Bar Rectangle
                 Rectangle{
-                    id:leftBar
-                    x: rulersSize/2 - width
-                    y: -selComp.height/2 + rulersSize/2
+                    z:-2
+                    id:rightBar
+                    y: -height + rulersSize/2
                     height: selComp.height
                     width: selComp.border.width
                     color: selComp.border.color
                 }
 
+                //MouseArea for Top Right handle
+                MouseArea{
+                    anchors.fill:parent
+                    drag{ target: parent; axis: Drag.XAndYAxis}
+                    onMouseXChanged: {
+                        if(drag.active){
+                            selComp.width = selComp.width + mouseX
+                            if(selComp.width < 50)
+                                selComp.width = 50
+                            if(selComp.width+selComp.x > image1.width)
+                                selComp.width = image1.width-selComp.x
+                        }
+                    }
+                    onMouseYChanged: {
+                        if(drag.active){
+                            selComp.height = selComp.height + mouseY
+                            if(selComp.height < 50)
+                                selComp.height = 50
+                            if(selComp.height+selComp.y > image1.height)
+                                selComp.height = image1.height-selComp.y
+                        }
+                    }
+                }
+
+                // MouseArea for Right Bar
                 MouseArea {
-                    anchors.fill: leftBar
+                    anchors.fill: rightBar
                     drag{ target: parent; axis: Drag.XAxis }
                     onMouseXChanged: {
                         if(drag.active){
                             selComp.width = selComp.width + mouseX
                             if(selComp.width < 50)
                                 selComp.width = 50
+                            if(selComp.width+selComp.x > image1.width)
+                                selComp.width = image1.width-selComp.x
                         }
                     }
                 }
             }
 
+            // Top
             Rectangle {
                 width: rulersSize
                 height: rulersSize
                 radius: rulersSize
                 x: parent.x / 2
-                color: "steelblue"
-                anchors.horizontalCenter: parent.horizontalCenter
+//                color: "steelblue"
+                anchors.horizontalCenter: parent.right
                 anchors.verticalCenter: parent.top
+
+                //Top Bar Rectangle
                 Rectangle{
+//                    color:"blue"
+                    z:-2
                     id:topBar
-                    x: -width/2 + rulersSize/2
+                    x: -width + rulersSize/2
                     y: rulersSize/2
                     width: selComp.width
                     height: selComp.border.width
                     color: selComp.border.color
                 }
+
+                //MouseArea for Top Right handle
+                MouseArea{
+                    anchors.fill:parent
+                    drag{ target: parent; axis: Drag.XAndYAxis}
+                    onMouseXChanged: {
+                        if(drag.active){
+                            selComp.width = selComp.width + mouseX
+                            if(selComp.width < 50)
+                                selComp.width = 50
+                            if(selComp.width+selComp.x > image1.width)
+                                selComp.width = image1.width-selComp.x
+                        }
+                    }
+                    onMouseYChanged: {
+                        if(drag.active){
+                            if(selComp.y >= 0 || mouseY>0){
+                                selComp.height = selComp.height - mouseY
+                                selComp.y = selComp.y + mouseY
+                                if(selComp.height < 50)
+                                    selComp.height = 50
+                            }
+                        }
+                    }
+                }
+
+                //MouseArea for Top Bar
                 MouseArea {
                     anchors.fill: topBar
                     drag{ target: parent; axis: Drag.YAxis }
                     onMouseYChanged: {
                         if(drag.active){
-                            selComp.height = selComp.height - mouseY
-                            selComp.y = selComp.y + mouseY
-                            if(selComp.height < 50)
-                                selComp.height = 50
+                            if(selComp.y >= 0 || mouseY>0){
+                                selComp.height = selComp.height - mouseY
+                                selComp.y = selComp.y + mouseY
+                                if(selComp.height < 50)
+                                    selComp.height = 50
+                            }
                         }
                     }
                 }
             }
 
-
+            // Bottom
             Rectangle {
                 width: rulersSize
                 height: rulersSize
                 radius: rulersSize
-                x: parent.x / 2
-                y: parent.y
-                color: "steelblue"
-                anchors.horizontalCenter: parent.horizontalCenter
+//                color: "steelblue"
+                anchors.horizontalCenter: parent.left
                 anchors.verticalCenter: parent.bottom
 
+                //Bottom Bar Rectangle
                 Rectangle{
+                    z:-5
                     id:bottomBar
-                    x: -width/2 + rulersSize/2
-                    y:rulersSize/2 - height
+                    x: rulersSize/2
+                    y: rulersSize/2 - height
                     width: selComp.width
                     height: selComp.border.width
                     color: selComp.border.color
                 }
 
+                // MouseArea for Bottom Right Handle
+                MouseArea{
+                    anchors.fill:parent
+                    drag{ target: parent; axis: Drag.XAndYAxis}
+                    onMouseXChanged: {
+                        if(drag.active){
+                            if(selComp.x >= 0 || mouseX>0){
+                                selComp.width = selComp.width - mouseX
+                                selComp.x = selComp.x + mouseX
+                                if(selComp.width < 30)
+                                    selComp.width = 30
+                            }
+                        }
+                    }
+                    onMouseYChanged: {
+                        if(drag.active){
+                            selComp.height = selComp.height + mouseY
+                            if(selComp.height < 50)
+                                selComp.height = 50
+                            if(selComp.height+selComp.y > image1.height)
+                                selComp.height = image1.height-selComp.y
+                        }
+                    }
+                }
+
+                //MouseArea for Bottom Bar
                 MouseArea {
                     anchors.fill: bottomBar
                     drag{ target: parent; axis: Drag.YAxis }
                     onMouseYChanged: {
                         if(drag.active){
-                            console.log(selComp.height)
                             selComp.height = selComp.height + mouseY
                             if(selComp.height < 50)
                                 selComp.height = 50
+                            if(selComp.height+selComp.y > image1.height)
+                                selComp.height = image1.height-selComp.y
                         }
                     }
                 }
