@@ -9,15 +9,16 @@ Window {
     property bool cropMode: false
     property int rotationAmount: 0
     visible: true
+    property var selection: undefined
+    property bool selectedBefore: false
+    property real memX: 0 // holds the last x of selection
+    property real memY: 0 // holds the last y of selection
+    property real memHeight: 50 // holds the last width of selection
+    property real memWidth: 50 // holds the last height of selection
 
-    Timer {id: timer}
-    // Function Description: This function takes in two parameters the first being the time in mileseconds
-    //                       and the second is a callback function that gets executed once the first parameters time's finished.
-    function delay(delayTime, cb) {
-        timer.interval = delayTime;
-        timer.repeat = false;
-        timer.triggered.connect(cb);
-        timer.start();
+    // Function Description: Calling this function shall rotate "mainImage" based on the root's rotationsAmount which is being change on click of rotateButton
+    function rotateImage() {
+//        selection.rotationAmount = rotationAmount
     }
 
     // Function Description: Calls on animations to start once the user is done cropping
@@ -56,7 +57,7 @@ Window {
             }
         ]
 
-        // ------------------ Animations Group (Start) ------------------
+        // Animations Group
         PropertyAnimation{
             id:scaleAnimX
             target: clippingScale
@@ -82,7 +83,6 @@ Window {
             properties: "y"
             duration: clippingMask.animationDuration
         }
-        // ------------------ Animation Group (End) ------------------------
 
         // Selection
         Rectangle {
@@ -97,11 +97,20 @@ Window {
             property int rotationAmount: 0
             property int rulersSize: 18
             Component.onCompleted:displayRulers()
-//            Timer {id: timer}
+            Timer {id: timer}
             x: 0
             y: 0
             width: image1.width
             height: image1.height
+
+            // Function Description: This function takes in two parameters the first being the time in mileseconds
+            //                       and the second is a callback function that gets executed once the first parameters time's finished.
+            function delay(delayTime, cb) {
+                timer.interval = delayTime;
+                timer.repeat = false;
+                timer.triggered.connect(cb);
+                timer.start();
+            }
 
             // Function Description: Displays guidelines, then after 3000 mileseconds it makes them disappear.
             function displayRulers(){
@@ -116,19 +125,16 @@ Window {
                 anchors.fill: parent
                 drag{
                     target: parent
-                    minimumX: ((rotationAmount-90)%360 == 0 || (rotationAmount-270)%360 == 0) ? (root.width - image1.height)/2 - selComp.border.width : 0
-//                    minimumX: 0
-                    minimumY: ((rotationAmount-90)%360 == 0 || (rotationAmount-270)%360 == 0) ? parent.height/2 - image1.height - image1.x : 0
-                    maximumX: ((rotationAmount-90)%360 == 0 || (rotationAmount-270)%360 == 0) ? (root.width - image1.height)/2 - selComp.border.width + image1.height - selComp.width : image1.width - parent.width
-                    maximumY: ((rotationAmount-90)%360 == 0 || (rotationAmount-270)%360 == 0) ? parent.height/2 - image1.height - image1.x + image1.width : image1.height - parent.height
+                    minimumX: 0
+                    minimumY: 0
+                    maximumX: ((rotationAmount-90)%360 == 0 || (rotationAmount-270)%360 == 0) ? image1.height - parent.width + (image1.height-root.width)/2 : image1.width - parent.width
+                    maximumY: ((rotationAmount-90)%360 == 0 || (rotationAmount-270)%360 == 0) ? image1.width - parent.height : image1.height - parent.height
                     smoothed: true
                 }
                 onReleased: {
 //                    resizeImage()
-                    console.log(`Image X position ${image1.x}`)
-                    parent.displayRulers()
+                    displayRulers()
                 }
-
             }
 
             function moveX(){
@@ -156,7 +162,7 @@ Window {
             onWidthChanged: changeWidth()
             onHeightChanged: changeHeight()
 
-            // ------------------ Start of guide lines ------------------
+            // Start of guide lines
             Rectangle{
                 visible: parent.rulers
                 y:parent.height/3
@@ -188,26 +194,27 @@ Window {
                 width: 1
                 color: parent.border.color
             }
-            // ------------------ End of guide lines ------------------
+            // End of guide lines
 
             // Left
             Rectangle {
                 width: parent.rulersSize
                 height: parent.rulersSize
                 radius: parent.rulersSize
+//                color: "steelblue"
                 anchors.horizontalCenter: parent.left
                 anchors.verticalCenter: parent.top
 
                 // Left Bar Rectangle
                 Rectangle{
                     z:-2
+                    color:"blue"
                     id:leftBar
                     x: width
-                    y:parent.parent.rulersSize/2
+                    y: parent.rulersSize/2
                     height: selComp.height
                     width: selComp.border.width
-                    color:selComp.border.color
-//                    color:"red"
+//                    color:selComp.border.color
                 }
 
                 //MouseArea for Top Left handle
@@ -258,6 +265,7 @@ Window {
                 width: parent.rulersSize
                 height: parent.rulersSize
                 radius: parent.rulersSize
+//                color: "steelblue"
                 anchors.horizontalCenter: parent.right
                 anchors.verticalCenter: parent.bottom
 
@@ -265,11 +273,10 @@ Window {
                 Rectangle{
                     z:-2
                     id:rightBar
-                    y: -height + parent.parent.rulersSize/2
+                    y: -height + parent.rulersSize/2
                     height: selComp.height
                     width: selComp.border.width
                     color: selComp.border.color
-//                    color:"yellow"
                 }
 
                 //MouseArea for Top Right handle
@@ -318,19 +325,20 @@ Window {
                 height: parent.rulersSize
                 radius: parent.rulersSize
                 x: parent.x / 2
+//                color: "steelblue"
                 anchors.horizontalCenter: parent.right
                 anchors.verticalCenter: parent.top
 
                 //Top Bar Rectangle
                 Rectangle{
+//                    color:"blue"
                     z:-2
                     id:topBar
-                    x: -width + parent.parent.rulersSize/2
-                    y: parent.parent.rulersSize/2
+                    x: -width + parent.rulersSize/2
+                    y: parent.rulersSize/2
                     width: selComp.width
                     height: selComp.border.width
                     color: selComp.border.color
-//                    color:"blue"
                 }
 
                 //MouseArea for Top Right handle
@@ -380,19 +388,19 @@ Window {
                 width: parent.rulersSize
                 height: parent.rulersSize
                 radius: parent.rulersSize
+//                color: "steelblue"
                 anchors.horizontalCenter: parent.left
                 anchors.verticalCenter: parent.bottom
 
                 //Bottom Bar Rectangle
                 Rectangle{
-                    z:-2
+                    z:-5
                     id:bottomBar
-                    x: parent.parent.rulersSize/2
-                    y: parent.parent.rulersSize/2 - height
+                    x: parent.rulersSize/2
+                    y: parent.rulersSize/2 - height
                     width: selComp.width
                     height: selComp.border.width
                     color: selComp.border.color
-//                    color:"green"
                 }
 
                 // MouseArea for Bottom Right Handle
@@ -478,6 +486,7 @@ Window {
         height: width
         onClicked: {
             rotationAmount = rotationAmount + 90
+            root.rotateImage()
         }
     }
 
@@ -493,10 +502,11 @@ Window {
             console.log("Reseting Image to original state")
             rotationAmount = 0
             image1.mirror = false
-            selComp.x = 0
-            selComp.y = 0
-            selComp.width = image1.width
-            selComp.height = image1.height
+            root.rotateImage()
+            selection.x = 0
+            selection.y = 0
+            selection.width = image1.width
+            selection.height = image1.height
         }
     }
 

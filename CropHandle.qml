@@ -29,7 +29,7 @@ Item {
 
     // Since the handles do not sit right on the TR and BL we need to adjust the position slightly
     function adjust(){
-        if(rotation ==90 || rotation ==270){
+        if(rotation == 90 || rotation ==270){
             horizontalBar.y = -root.height - 1
             horizontalBar.x = root.height + 1
             verticalBar.y = -root.height - 1

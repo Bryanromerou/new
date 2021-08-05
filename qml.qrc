@@ -7,8 +7,11 @@
         <file>CropHandle.qml</file>
         <file>Button1.qml</file>
         <file>InputText.qml</file>
-        <file>temp.qml</file>
         <file>WorkingRect.qml</file>
-        <file>temp2.qml</file>
+        <file>NewestIteration.qml</file>
+        <file>OnlineExample.qml</file>
+        <file>StepCloser.qml</file>
+        <file>StepCloser2.qml</file>
+        <file>NoDynamicCreation.qml</file>
     </qresource>
 </RCC>
